@@ -23,12 +23,12 @@ alpha = .03
 nTrain = .5
 
 #Gamma is the kernal width - the array contains the values to test/compare in gridSearch
-gArray = [1.6, 1.4, 1.2, 1, .8, .6, .4, .2, .01, .005]
-#gArray = [1.6, 1.4, 1.2, 1, .8]
+#gArray = [1.6, 1.4, 1.2, 1, .8, .6, .4, .2, .01, .005]
+gArray = [1.6, 1.4, 1.2, 1, .8]
 
 #Nu is the upper bound of rejected target data
-nuArray = [.5, .3, .1, .05, .01, .03, .005, .001]
-
+#nuArray = [.5, .3, .1, .05, .01, .03, .005, .001]
+nuArray = [.03]
 #Import location
 irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris.csv")
 
@@ -41,6 +41,11 @@ selectedCols = dataCols
 
 #Would you like to see a point pair plot?
 showPairPlot = False
+
+
+
+
+
 
 
 
@@ -119,6 +124,30 @@ def getResults(model, scaledData, trueClass):
     return df
 
 
+#normalizeData(train: pandas dataframe of the training split, test:pandas dataframe of the testing split
+#Use Standard scaler to adjust data - fit to training only - transform to test
+#This step also seperated the species column for proper scoring (Don't want 1, -1 normalized)
+def normalizeData(train, test):
+    scaler = sk.preprocessing.StandardScaler()
+    scaledTrain = scaler.fit_transform(trainData[selectedCols])
+    scaledTest = scaler.transform(testData[selectedCols])
+    return(scaledTrain, scaledTest)
+
+
+def plotScatter(train, test, var1, var2):
+    matrixGroups = test.groupby("Confusion Matrix")
+    colorDict = {'true nominal':'blue', 'false nominal':'red',  'true anomaly':'green', 'false anomaly':'orange'}
+
+    for name, group in matrixGroups:
+        print(name,":",len(group))
+        plt.scatter(group[var1], group[var2], c = colorDict[name], label = name, alpha = .5)
+
+    #Overlay training points for reference
+    plt.scatter(train[var1], train[var2], c = 'black', alpha = 1, s = 10, label = "training_data")
+
+    plt.legend(loc="best")
+    plt.plot()
+
 
 
 
@@ -129,22 +158,15 @@ def getResults(model, scaledData, trueClass):
 
 ##DATA PREP##
 
-#Prepare data and organize into training and testing groups
+#Prepare data and split into training and testing groups
 trainData, testData = splitData(irisData, alpha, nTrain)
-
-#Normalize data from training set
-#Seperate into data and species label
-#Use Standard scaler to adjust data - fit to training only - transform to test
-#This step also seperated the species column for proper scoring
-scaler = sk.preprocessing.StandardScaler()
-scaledTrain = scaler.fit_transform(trainData[selectedCols])
-scaledTest = scaler.transform(testData[selectedCols])
+#Normalize data
+scaledTrain, scaledTest = normalizeData(trainData, testData)
 
 ###############################################################################
 
 ##CREATE MODEL##
 
-#Fit Model
 #Set up grid search
 oneClass = sk.model_selection.GridSearchCV(sk.svm.OneClassSVM(kernel='rbf'),
                    param_grid={"nu": nuArray,
@@ -172,23 +194,12 @@ if showPairPlot:
     for x in range(0, len(selectedCols)):
         ppCols.append(x)
     ppChart = sns.pairplot(testResults, vars = ppCols, hue = "Confusion Matrix")
+else:
+    #Sepal len x width
+    #plotScatter(trainResults, testResults, 0,1)
+    #Petal len x width
+    plotScatter(trainResults, testResults, 2,3)
 
-#Build scatterplot and confusion matrix  
-matrixGroups = testResults.groupby("Confusion Matrix")
-colorDict = {'true nominal':'blue', 'false nominal':'red',  'true anomaly':'green', 'false anomaly':'orange'}
-for name, group in matrixGroups:
-    print(name,":",len(group))
-    plt.scatter(group[0], group[1], c = colorDict[name], label = name, alpha = .5)
-
-#Overlay training points for reference
-plt.scatter(trainResults[0], trainResults[1], c = 'black', alpha = 1, s = 10, label = "training_data")
-
-plt.legend(loc="best")
-plt.plot()
-
-
-#Plots first 2 cols (2d plot)
-#plt.scatter(result[:,0],result[:,1], c='y')
 
 
 
