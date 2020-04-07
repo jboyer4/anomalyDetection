@@ -127,6 +127,8 @@ def getResults(model, scaledData, trueClass):
 #normalizeData(train: pandas dataframe of the training split, test:pandas dataframe of the testing split
 #Use Standard scaler to adjust data - fit to training only - transform to test
 #This step also seperated the species column for proper scoring (Don't want 1, -1 normalized)
+#
+#returns: numpy arrays of normalized train and test data
 def normalizeData(train, test):
     scaler = sk.preprocessing.StandardScaler()
     scaledTrain = scaler.fit_transform(trainData[selectedCols])
@@ -134,6 +136,12 @@ def normalizeData(train, test):
     return(scaledTrain, scaledTest)
 
 
+#plotScatter(train: pandas df of training results, test: pandas df of test results, var1: int of column to be used for the scatter x values, var2: int of column to be used for the scatter y values )
+#Group data by the confusion matrix category category
+#plot training data by confusion matrix category category
+#plot training points in black
+#
+#returns: Nothing - prints plot to screen
 def plotScatter(train, test, var1, var2):
     matrixGroups = test.groupby("Confusion Matrix")
     colorDict = {'true nominal':'blue', 'false nominal':'red',  'true anomaly':'green', 'false anomaly':'orange'}
@@ -143,10 +151,20 @@ def plotScatter(train, test, var1, var2):
         plt.scatter(group[var1], group[var2], c = colorDict[name], label = name, alpha = .5)
 
     #Overlay training points for reference
-    plt.scatter(train[var1], train[var2], c = 'black', alpha = 1, s = 10, label = "training_data")
+    plt.scatter(train[var1], train[var2], c = 'black', alpha = 1, s = 10, label = "training data")
 
     plt.legend(loc="best")
     plt.plot()
+
+
+#plotPairs(data: pandas df to plot, cols: int number of columns to plot)
+#
+#Returns: nothing - prints seaborn pair plot to the screen
+def plotPairs(data, cols):
+    ppCols = []
+    for x in range(0, cols):
+        ppCols.append(x)
+    sns.pairplot(data, vars = ppCols, hue = "Confusion Matrix")
 
 
 
@@ -190,10 +208,8 @@ testResults = getResults(oneClass, scaledTest, testData[labelCols].to_numpy())
 
 #Build pairplot if asked for
 if showPairPlot:
-    ppCols = []
-    for x in range(0, len(selectedCols)):
-        ppCols.append(x)
-    ppChart = sns.pairplot(testResults, vars = ppCols, hue = "Confusion Matrix")
+    plotPairs(testResults, len(selectedCols))
+
 else:
     #Sepal len x width
     #plotScatter(trainResults, testResults, 0,1)
