@@ -12,8 +12,44 @@ import sklearn.model_selection
 import sklearn.svm
 import pandas as pd
 import math
-# Seaborn visualization library
 import seaborn as sns
+
+
+
+#USER DEFINED GLOBAL VARIABLES
+#Alpha is expected percentage of anomolies in the dataset as a decimal
+alpha = .03
+#nTrain is percent of nominal points used in the training data as a decimal
+nTrain = .5
+
+#Gamma is the kernal width - the array contains the values to test/compare in gridSearch
+gArray = [1.6, 1.4, 1.2, 1, .8, .6, .4, .2, .01, .005]
+#gArray = [1.6, 1.4, 1.2, 1, .8]
+
+#Nu is the upper bound of rejected target data
+nuArray = [.5, .3, .1, .05, .01, .03, .005, .001]
+
+#Import location
+irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris.csv")
+
+#Dataframe labels
+sepalCols = ["Sepal length", "Sepal width"]
+dataCols = ["Sepal length", "Sepal width", "Petal length", "Petal width"]
+labelCols = ["Species"]
+
+selectedCols = dataCols
+
+#Would you like to see a point pair plot?
+showPairPlot = False
+
+
+
+
+
+
+################################################################################
+#Functions#
+###############################################################################
 
 
 #splitData(data: Iris data as pandas data frame, alpha: % of training data to be anomaly as decimal, nTrain: % of nominal points to use for training as decimal)
@@ -83,50 +119,32 @@ def getResults(model, scaledData, trueClass):
     return df
 
 
-#Step 1) Import data and Choose Presets:
-#Alpha is expected percentage of anomolies in the dataset
-alpha = .03
-#nTrain is percent of nominal points used in the training data 
-nTrain = .5
-
-#Gamma is the kernal width - the array contains the values to test/compare in gridSearch
-gArray = [1.6, 1.4, 1.2, 1, .8, .6, .4, .2, .01, .005]
-#gArray = [1.6, 1.4, 1.2, 1, .8]
-
-#Nu is the upper bound of rejected target data
-nuArray = [.5, .3, .1, .05, .01, .03, .005, .001]
-
-
-
-#Import location
-irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris.csv")
-
-#Dataframe labels
-sepalCols = ["Sepal length", "Sepal width"]
-dataCols = ["Sepal length", "Sepal width", "Petal length", "Petal width"]
-labelCols = ["Species"]
-
-selectedCols = dataCols
 
 
 
 
-#Step 2)Prepare data and organize into training and testing groups
+###############################################################################
+#Workflow#
+###############################################################################
+
+##DATA PREP##
+
+#Prepare data and organize into training and testing groups
 trainData, testData = splitData(irisData, alpha, nTrain)
 
-#Step 3: Normalize from training
+#Normalize data from training set
 #Seperate into data and species label
 #Use Standard scaler to adjust data - fit to training only - transform to test
 #This step also seperated the species column for proper scoring
-scaler = sk.preprocessing.StandardScaler().fit(trainData[selectedCols])
-scaledTrain = scaler.transform(trainData[selectedCols])
+scaler = sk.preprocessing.StandardScaler()
+scaledTrain = scaler.fit_transform(trainData[selectedCols])
 scaledTest = scaler.transform(testData[selectedCols])
 
+###############################################################################
 
+##CREATE MODEL##
 
-
-
-#Step 4: Fit Model
+#Fit Model
 #Set up grid search
 oneClass = sk.model_selection.GridSearchCV(sk.svm.OneClassSVM(kernel='rbf'),
                    param_grid={"nu": nuArray,
@@ -135,12 +153,27 @@ oneClass = sk.model_selection.GridSearchCV(sk.svm.OneClassSVM(kernel='rbf'),
 #Fit the model using the labelCol to score
 oneClass.fit(scaledTrain, trainData[labelCols])
 print("Grid search selected the hyperparameters: ")
-print(oneClass.best_params_)
+print(oneClass.best_params_,"\n")
 
+
+#Build results dataframes
 trainResults = getResults(oneClass, scaledTrain, trainData[labelCols].to_numpy())
 testResults = getResults(oneClass, scaledTest, testData[labelCols].to_numpy())
 
-#Build Plot and Confusion matrix  
+
+
+###############################################################################
+
+##PLOT RESULTS##
+
+#Build pairplot if asked for
+if showPairPlot:
+    ppCols = []
+    for x in range(0, len(selectedCols)):
+        ppCols.append(x)
+    ppChart = sns.pairplot(testResults, vars = ppCols, hue = "Confusion Matrix")
+
+#Build scatterplot and confusion matrix  
 matrixGroups = testResults.groupby("Confusion Matrix")
 colorDict = {'true nominal':'blue', 'false nominal':'red',  'true anomaly':'green', 'false anomaly':'orange'}
 for name, group in matrixGroups:
@@ -148,10 +181,10 @@ for name, group in matrixGroups:
     plt.scatter(group[0], group[1], c = colorDict[name], label = name, alpha = .5)
 
 #Overlay training points for reference
-plt.scatter(trainResults[0], trainResults[1], c = 'black', alpha = 1, s = 10, label = "training")
+plt.scatter(trainResults[0], trainResults[1], c = 'black', alpha = 1, s = 10, label = "training_data")
 
 plt.legend(loc="best")
-plt.show()
+plt.plot()
 
 
 #Plots first 2 cols (2d plot)
