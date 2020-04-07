@@ -18,7 +18,7 @@ import seaborn as sns
 
 #USER DEFINED GLOBAL VARIABLES
 #Alpha is expected percentage of anomolies in the dataset as a decimal
-alpha = .03
+alpha = .05
 #nTrain is percent of nominal points used in the training data as a decimal
 nTrain = .5
 
@@ -34,10 +34,11 @@ irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris
 
 #Dataframe labels
 sepalCols = ["Sepal length", "Sepal width"]
+petalCols = ["Petal length", "Petal width"]
 dataCols = ["Sepal length", "Sepal width", "Petal length", "Petal width"]
 labelCols = ["Species"]
 
-selectedCols = dataCols
+selectedCols = sepalCols
 
 #Would you like to see a point pair plot?
 showPairPlot = False
@@ -211,10 +212,20 @@ if showPairPlot:
     plotPairs(testResults, len(selectedCols))
 
 else:
+    #If the training data was 2D, draw the training boundrary
+    if len(trainResults.columns) == 5:
+        xx, yy = np.meshgrid(np.linspace(-5, 5, 100), np.linspace(-5, 5, 100))
+        Z = oneClass.decision_function(np.c_[xx.ravel(), yy.ravel()])
+        Z = Z.reshape(xx.shape)
+        plt.contour(xx, yy, Z, levels=[0], linewidths=2, colors='darkred')
+    #Plot
+    plotScatter(trainResults, testResults, 0,1)
+    
+    #PLOT IDEAS FOR FULL DATASET
     #Sepal len x width
     #plotScatter(trainResults, testResults, 0,1)
     #Petal len x width
-    plotScatter(trainResults, testResults, 2,3)
+    #plotScatter(trainResults, testResults, 2,3)
 
 
 
