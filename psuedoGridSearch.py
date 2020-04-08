@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sklearn as sk
 import sklearn.model_selection
-import sklearn.svm
+
 import pandas as pd
 import JB_functions_ocIris as ocIris
 
@@ -20,12 +20,10 @@ alpha = .03
 nTrain = .75
 
 #Gamma is the kernal width - the array contains the values to test/compare in gridSearch
-#gArray = [1.6, 1.4, 1.2, 1, .8, .6, .4, .2, .01, .005]
-gArray = [1.6, 1.4, 1.2, 1, .8, .6, .4]
+gVal = 1
 
 #Nu is the upper bound of rejected target data
-#nuArray = [.5, .3, .1, .05, .01, .03, .005, .001]
-nuArray = [alpha]
+nVal = alpha
 #Import location
 irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris.csv")
 
@@ -35,10 +33,8 @@ petalCols = ["Petal length", "Petal width"]
 dataCols = ["Sepal length", "Sepal width", "Petal length", "Petal width"]
 labelCols = ["Species"]
 
-selectedCols = sepalCols
+selectedCols = dataCols
 
-#Would you like to see a point pair plot?
-showPairPlot = False  
 
 ###############################################################################
 #Workflow#
@@ -49,8 +45,14 @@ showPairPlot = False
 #Prepare data and split into training and testing groups
 trainData, testData = ocIris.splitData(irisData, alpha, nTrain)
 #Normalize data
-scaledTrain, scaledTest = ocIris.normalizeData(trainData, testData)
+scaledTrain, scaledTest = ocIris.normalizeData(trainData, testData, selectedCols)
 
 ###############################################################################
 
 ##CREATE MODEL##
+oc = sk.svm.OneClassSVM(gamma = gVal, nu = nVal)
+#Fit model and get dataframe results
+trainResults = ocIris.getResults(oc, scaledTrain, trainData[labelCols].to_numpy())
+testResults = ocIris.getResults(oc, scaledTest, testData[labelCols].to_numpy())
+
+
