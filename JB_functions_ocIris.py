@@ -81,6 +81,7 @@ def getResults(model, scaledData, trueClass):
     df = pd.DataFrame(data = scaledData)        
     df["Prediciton"] = np.atleast_2d(prediction).T
     df["True Value"] = trueClass
+    df["Decision Function"] = model.decision_function(scaledData)
     df["Confusion Matrix"] = buildMatrix(prediction, trueClass)
     return df
 
