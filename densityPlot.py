@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sklearn as sk
 import sklearn.model_selection
-
+import math
 import pandas as pd
 import JB_functions_ocIris as ocIris
 import seaborn 
@@ -21,11 +21,14 @@ splits = 30
 
 #Alpha is expected percentage of anomolies in the dataset as a decimal
 alpha = .03
+
+#simga
+sigma = 1
 #nTrain is percent of nominal points used in the training data as a decimal
 nTrain = .5
 
-#Gamma is the kernal width - the array contains the values to test/compare in gridSearch
-gVal = 1
+#Gamma is the kernal width
+gVal = 1/(2*math.pow(sigma, 2))
 #Nu is the upper bound of rejected target data
 nVal = alpha
 

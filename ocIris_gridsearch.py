@@ -23,11 +23,11 @@ nTrain = .75
 
 #Gamma is the kernal width - the array contains the values to test/compare in gridSearch
 #gArray = [1.6, 1.4, 1.2, 1, .8, .6, .4, .2, .01, .005]
-gArray = [1.6, 1.4, 1.2, 1, .8, .6, .4]
-
+#gArray = [1.6, 1.4, 1.2, 1, .8]
+gArray = [.6, .5, .4, .3, .2]
 #Nu is the upper bound of rejected target data
-#nuArray = [.5, .3, .1, .05, .01, .03, .005, .001]
-nuArray = [alpha]
+nuArray = [.5, .3, .1, .05, .01, .03, .005, .001]
+#nuArray = [alpha]
 #Import location
 irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris.csv")
 
@@ -84,7 +84,8 @@ if showPairPlot:
 
 else:
     #If the training data was 2D, draw the training boundrary
-    if len(trainResults.columns) == 5:
+
+    if len(trainResults.columns) == 6:
         xx, yy = np.meshgrid(np.linspace(-5, 5, 100), np.linspace(-5, 5, 100))
         Z = oneClass.decision_function(np.c_[xx.ravel(), yy.ravel()])
         Z = Z.reshape(xx.shape)
