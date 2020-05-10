@@ -11,8 +11,10 @@ import sklearn as sk
 import sklearn.model_selection
 import sklearn.svm
 import pandas as pd
+import math
 
 from scipy.spatial import distance
+from scipy.optimize import minimize
 import JB_functions_ocIris as ocIris
 
 #Alpha is expected percentage of anomolies in the dataset as a decimal
@@ -48,6 +50,10 @@ def Model(gamma):
 
 
 
+
+def dfn(nearestPt, furthestPt, s):
+   return (math.exp(-near/s))-(math.exp(-far/s))
+
 ###############################################################################
 #Workflow#
 ###############################################################################
@@ -60,15 +66,39 @@ trainData, testData = ocIris.splitData(irisData, alpha, nTrain)
 scaledTrain, scaledTest = ocIris.normalizeData(trainData, testData, predictors)
 #Get array of all 4d points to get euclidean dist
 allPts = np.concatenate((scaledTrain, scaledTest))
-
 distanceMatrix = np.zeros((150,150))
+
+
+#columns
+allFar = []
+allNear = []
 for i in range(0,150):
-    for j in range(i, 150):
-        d = distance.euclidean(allPts[i], allPts[j])
-        distanceMatrix[i][j] = d
-        distanceMatrix[j][i] = d
+    #Get the max and min of each column to sum in the DFN equation Xiau 2013: 
+    far = -(math.inf)
+    near = math.inf
+
+    for j in range(0, 150):
+        d = pow(distance.euclidean(allPts[i], allPts[j]),2)
+        #d = distance.euclidean(allPts[i], allPts[j])
+        if d == 0: distanceMatrix[i][j] = None
+        else: 
+            distanceMatrix[i][j] = d
+            if d > far: far = d
+            if d < near: near = d
+    #After finishing a col, add the ex
+    
+    allFar.append(far)
+    allNear.append(near)
+   
+far = np.mean(allFar)
+near = np.mean(allNear)
+
+steps = np.linspace(1, 50, 500)
+for step in steps:
+    plt.scatter(step, dfn(near,far,step))
+
+plt.show()
         
 np.savetxt("distMatrix.csv", distanceMatrix, delimiter=",")
-#distance matrix populated
-#Get max and mins of each 
-    
+
+plt.hist(distanceMatrix.flatten(), bins = 300, density = True)
