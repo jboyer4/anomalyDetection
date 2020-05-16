@@ -33,26 +33,10 @@ irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris
 predictors = ["Sepal length", "Sepal width", "Petal length", "Petal width"]
 target = ["Species"]
 
-def Model(gamma):    
-    ##DATA PREP##
-    #Prepare data and split into training and testing groups
-    trainData, testData = ocIris.splitData(irisData, alpha, nTrain)
-    #Normalize data
-    scaledTrain, scaledTest = ocIris.normalizeData(trainData, testData, predictors)    
-    ############################################################################
-    ##CREATE MODEL##
-    oc = sk.svm.OneClassSVM(gamma = gamma, nu = nVal)
-    #Fit model and get dataframe results
-    oc.fit(scaledTrain)
-    trainResults = ocIris.getResults(oc, scaledTrain, trainData[target].to_numpy())
-    testResults = ocIris.getResults(oc, scaledTest, testData[target].to_numpy())
-    return trainResults, testResults
 
-
-
-
-def dfn(nearestPt, furthestPt, s):
-   return (math.exp(-near/s))-(math.exp(-far/s))
+def dfn(x, near, far):
+    #invert to use a minimiztion problem
+    return  - ((math.exp(-near/x))-(math.exp(-far/x)))
 
 ###############################################################################
 #Workflow#
@@ -72,6 +56,7 @@ distanceMatrix = np.zeros((150,150))
 #columns
 allFar = []
 allNear = []
+optimized = []
 for i in range(0,150):
     #Get the max and min of each column to sum in the DFN equation Xiau 2013: 
     far = -(math.inf)
@@ -85,18 +70,29 @@ for i in range(0,150):
             distanceMatrix[i][j] = d
             if d > far: far = d
             if d < near: near = d
-    #After finishing a col, add the ex
-    
+        
+    points = (near, far)     
     allFar.append(far)
     allNear.append(near)
-   
+       #minimize function on each distance
+    convergence = minimize(dfn,
+            x0=20,
+            args = points,
+            method = 'Nelder-Mead'
+            )
+    optimized.append(convergence.x[0])
+    
 far = np.mean(allFar)
 near = np.mean(allNear)
 
-steps = np.linspace(1, 50, 500)
+opt = np.mean(optimized)
+gamma = 1/(2*opt*opt)
+steps = np.linspace(0.1, 50, 500)
 for step in steps:
-    plt.scatter(step, dfn(near,far,step))
-
+    plt.scatter(step, -(dfn(step, near, far)))    
+plt.axvline(opt)
+plt.text(s= "Max: " + str(opt), x = 15, y = 0.5)
+plt.text(s= "Gamma: " + str(gamma), x = 15, y = 0.4)
 plt.show()
         
 np.savetxt("distMatrix.csv", distanceMatrix, delimiter=",")
