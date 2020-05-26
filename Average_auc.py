@@ -16,14 +16,14 @@ import JB_functions_ocIris as ocIris
 
 #How many times to fit the model with different splits
 #s values to test (s = 2*(sigma^2))
-sArray = [60,55,50,45,40,35,30, 25, 20,17, 15, 13, 11, 9, 8,7, 5, 3, 1, .5, .1]
+sArray = [200, 140,120, 100, 80,60, 40, 30, 20, 15, 10, 5, 1, .5, .1]
 
 #How many times to fit the model with different splits. Useful for determining 
 #averages over many possible training/test splits. O(n^2) complexity
-splits = 25
+splits = 50
 
 ###############################################################################
-#Workflow#
+#Generate average AUCs
 ###############################################################################
 
 auc_averages = []
@@ -48,3 +48,8 @@ plt.plot()
 d = {'s value': sArray, 'g value': gArray, 'average AUC':auc_averages}
 averagesTable = pd.DataFrame(data = d)
 print(averagesTable)
+
+###############################################################################
+##Plot AUC chang over s##
+###############################################################################
+averagesTable.plot(x= 's value', y= 'average AUC')

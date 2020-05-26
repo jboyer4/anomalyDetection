@@ -19,7 +19,7 @@ import pandas as pd
 #The workd flow is otherwise the same as JB_functions_ocIris, check there for 
 #more details about variables and functions
 
-s = 5
+s = 15
 gamma = (1/s)
 nTrain = .75
 alpha = .03

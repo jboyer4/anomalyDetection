@@ -93,8 +93,10 @@ gamma = (1/(convergence.x[0]))
 fig, plots = plt.subplots(1,2,figsize=(15, 5))
 
         
-plots[0].axvline(x = (convergence.x[0]), c= 'red')
+plots[0].axvline(x = (convergence.x[0]), c= 'red', label = "s = " + str(convergence.x[0]))
+plots[0].legend()
 plots[0].hist(distanceMatrix.flatten(), bins = 300, density = True)
+
    
 ###########################################################################
 #Plot ROC ##
