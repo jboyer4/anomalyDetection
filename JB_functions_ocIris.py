@@ -1,7 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Apr  7 16:20:31 2020
+This script sets preps the Iris dataset to experiement with hyperparameter tuning
+for one-class-SVM with the Iris Setosa used as the anomoulous data points
+(I. Virginica and Versicolor are considered nominal)
 
+Running this script will create a train test split, normalize the data, fit a 
+ocsvm model and create pandas dataframes with the results 
+
+The dataframes are accessed by the following names:
+trainResults
+testResults
+    or
+allResults (for both train and test data)
+
+Created on Tue Apr  7 16:20:31 2020
 @author: Justin
 """
 import numpy as np
@@ -13,10 +25,61 @@ import pandas as pd
 import math
 import seaborn as sns
 
+
+###############################################################################
+# User Selected Variables
+###############################################################################
+
+#HYPERPARAMETERS
+#Gamma is the kernal width and is the hyperparameter required by scipy
+# gamma equals 1/(2*sigma^2) or 1/s:
+
+#Xiao 2013 uses s for hyperparameter tuning ocsvn with using DFN so we allow for
+# hyperparameter tuning in terms of s for ease of use. 
+# S is 2*sigma^2 or the denominator for gamma
+s = 9
+sigma = math.sqrt(s/2)
+gamma = (1/(s))
+
+#Alpha is expected percentage of anomolies in the dataset as a decimal. Here 
+# it is used to determine the anomoly percentage in a bit of self-fulfilling prophecy
+alpha = .03
+
+#Nu is the upper bound of rejected target data
+nVal = alpha
+
+#nTrain is percent of the nominal points used in the training data as a decimal
+#the remaining nominal points will be used for testing
+nTrain = .5
+
+#How many times to fit the model with different splits. Useful for determining 
+#averages over many possible training/test splits. O(n^2) complexity
+splits = 25
+
+#Import location
+irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\ML_research\Iris mods\iris.csv")
+
+#Dataframe labels
+predictors = ["Sepal length", "Sepal width", "Petal length", "Petal width"]
+target = ["Species"]
+#You can change the selected columns if you would prefer to only consider a 
+# subset such as petal data or sepal data only
+selectedCols = predictors
+
 ################################################################################
 #Functions#
 ###############################################################################
+# Core data prep:
+# splitData(data, alpha, nTrain)
+# def buildMatrix(predictions, labels)
+# getResults(model, scaledData, trueClass)
+# normalizeData(train, test, cols)
 
+# Plot suggestions
+# plotScatter(train, test, var1, var2)
+# plotPairs(data, cols)
+
+###############################################################################
 
 #splitData(data: Iris data as pandas data frame, alpha: % of training data to be anomaly as decimal, nTrain: % of nominal points to use for training as decimal)
 #Because the iris dataset is three class not one class, we need to convert it to a one class dataset in order to use it as sample data for anomaly detection with ocsvm
@@ -96,30 +159,38 @@ def normalizeData(train, test, cols):
     scaledTrain = scaler.fit_transform(train[cols])
     scaledTest = scaler.transform(test[cols])
     return(scaledTrain, scaledTest)
+    
+#Model(gamma: float gamma value to use to creat ocsvm model)
+#This function calls the the whole data prep sequence and can be especially helpful
+#to compare multiple hyperparameters in the same plot
+def Model(gamma):    
+    ##DATA PREP##
+    #Prepare data and split into training and testing groups
+    trainData, testData = splitData(irisData, alpha, nTrain)
+    #Normalize data
+    scaledTrain, scaledTest = normalizeData(trainData, testData, predictors)    
+    ############################################################################
+    ##CREATE MODEL##
+    oc = sk.svm.OneClassSVM(gamma = gamma, nu = nVal)
+    #Fit model and get dataframe results
+    oc.fit(scaledTrain)
+    trainResults = getResults(oc, scaledTrain, trainData[target].to_numpy())
+    testResults = getResults(oc, scaledTest, testData[target].to_numpy())
+    return trainResults, testResults
+
+###############################################################################
+#   MAIN
+###############################################################################
+#Environment set up for working with Iris data set
+trainResults,  testResults = Model(gamma)
+allResults = pd.concat([trainResults, testResults])
 
 
-#plotScatter(train: pandas df of training results, test: pandas df of test results, var1: int of column to be used for the scatter x values, var2: int of column to be used for the scatter y values )
-#Group data by the confusion matrix category category
-#plot training data by confusion matrix category category
-#plot training points in black
-#
-#returns: Nothing - prints plot to screen
-def plotScatter(train, test, var1, var2):
-    matrixGroups = test.groupby("Confusion Matrix")
-    colorDict = {'true nominal':'blue', 'false nominal':'red',  'true anomaly':'green', 'false anomaly':'orange'}
-
-    for name, group in matrixGroups:
-        print(name,":",len(group))
-        plt.scatter(group[var1], group[var2], c = colorDict[name], label = name, alpha = .5)
-
-    #Overlay training points for reference
-    plt.scatter(train[var1], train[var2], c = 'black', alpha = 1, s = 10, label = "training data")
-
-    plt.legend(loc="best")
-    plt.plot()
 
 
-#plotPairs(data: pandas df to plot, cols: int number of columns to plot)
+
+
+#plotPairs(data: pandas df to plot, cols: int number of data columns to add to pair plot)
 #
 #Returns: nothing - prints seaborn pair plot to the screen
 def plotPairs(data, cols):
