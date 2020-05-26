@@ -14,7 +14,7 @@ import JB_functions_ocIris as ocIris
 import seaborn 
 
 splits = 100
-s = 8.5
+s = 20
 gamma = (1/s)
 
 #Fit model many 'split' number of times to get a good average using many possible

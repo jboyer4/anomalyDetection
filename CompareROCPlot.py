@@ -15,7 +15,7 @@ import JB_functions_ocIris as ocIris
 
 #How many times to fit the model with different splits
 #s values to test (s = 2*(sigma^2))
-sArray = [60,55,50,45,40,35,30, 25, 20,17, 15, 13, 11, 9, 8,7, 5, 3, 1, .5, .1]
+sArray = [25, 15, 12, 9, 7, 5]
 
 def plotROC(data, plot, aucScore):
     fpr, tpr, threshold = sk.metrics.roc_curve(testResults['True Value'], testResults['Decision Function'])
@@ -45,6 +45,6 @@ roc.set_ylabel("True Positive Rate")
 roc.set_title("Sample ROCs")
 
 #Legend works well for small sArrays only
-#roc.legend()
+roc.legend()
 roc.plot()
 
