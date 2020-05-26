@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat May  9 13:46:19 2020
+OCSVM hyperparameter tuning algorithm for gamma. DFN (Xiao 2013) uses the nearest
+and furthest neighbor for each point to optimize 's'or the denominator in 
+gamma = 1/(2*sigma^2) 
 
-@author: Justin
-"""
-
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Apr 14 11:57:58 2020
-
+Created on Tue Apr 21 17:16:59 2020
 @author: Justin
 """
 
@@ -18,107 +14,103 @@ import sklearn as sk
 import sklearn.model_selection
 import sklearn.svm
 import pandas as pd
+import math
+import sympy as sy
+from scipy.spatial import distance
+from scipy.optimize import minimize
 import JB_functions_ocIris as ocIris
 
-import math
-
-#USER DEFINED GLOBAL VARIABLES
-
-#How many times to fit the model with different splits
-
-splits = 100
-#Alpha is expected percentage of anomolies in the dataset as a decimal
 alpha = .03
-#nTrain is percent of nominal points used in the training data as a decimal
 nTrain = .5
-
-#sigmas to test
-sArray = [2.6, 2.4, 2.2, 2, 1.8, 1.6, 1.4, 1.2, 1.0, .8, .6, .4, .2, .09]
- 
-#Gamma is the kernal width - the array contains the values to test/compare in gridSearch
-#gArray = [.6, .5, .4, .3, .2]
-#gArray = [1.5, 1.2, 1, .8, .5, .2, .01]
-
-#Nu is the upper bound of rejected target data
-nVal = alpha
-
-#Import location
-irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris.csv")
-#Dataframe labels
+irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\ML_research\Iris mods\iris.csv")
 predictors = ["Sepal length", "Sepal width", "Petal length", "Petal width"]
 target = ["Species"]
 
-def Model(gamma):    
-    ##DATA PREP##
-    #Prepare data and split into training and testing groups
-    trainData, testData = ocIris.splitData(irisData, alpha, nTrain)
-    #Normalize data
-    scaledTrain, scaledTest = ocIris.normalizeData(trainData, testData, predictors)    
-    ############################################################################
-    ##CREATE MODEL##
-    oc = sk.svm.OneClassSVM(gamma = gamma, nu = nVal)
-    #Fit model and get dataframe results
-    oc.fit(scaledTrain)
-    trainResults = ocIris.getResults(oc, scaledTrain, trainData[target].to_numpy())
-    testResults = ocIris.getResults(oc, scaledTest, testData[target].to_numpy())
-    return trainResults, testResults
-
-
-def plotROC(data, plot):
-    fpr, tpr, threshold = sk.metrics.roc_curve(testResults['True Value'], testResults['Decision Function'])
-    label = str(sigma) + " sigma"
-    roc.plot(fpr,tpr, label = label)
-    
-
-    
+def dfn(x, nearPts, farPts):
+    n = sy.Symbol('n')
+    expression1 = 0
+    expression2 = 0
+    for i in range(len(irisData)):
+        expression1 = expression1 + sy.exp(-allNearest[i]/n)
+        expression2 = expression2 + sy.exp(-allFurthest[i]/n)
+    dfn = -(2/len(irisData))*(((expression1)-(expression2)))
+    return  dfn.subs(n, x)
 
 ###############################################################################
-#Workflow#
+##DATA PREP##
+###############################################################################
+    
+#Prepare data and split into training and testing groups and normalize the data
+#to create a euclidean distance area logging the 4-D distance between each point
+trainData, testData = ocIris.splitData(irisData, alpha, nTrain)
+scaledTrain, scaledTest = ocIris.normalizeData(trainData, testData, predictors)
+allPts = np.concatenate((scaledTrain, scaledTest))
+distanceMatrix = np.zeros((150,150))
+
+###############################################################################
+##CONSTRUCT DISTANCE MATRIX##
 ###############################################################################
 
-#Plot ROC for each sigma in array
-fig, roc = plt.subplots() 
-for sigma in sArray:
-    gamma = 1/(2*math.pow(sigma, 2))           
-    trainResults, testResults = Model(gamma)
-    plotROC(testResults, roc)
-    aucScore = sk.metrics.roc_auc_score(testResults['True Value'], testResults['Decision Function'])
-    print(sigma, " AUC: ", aucScore)
-    
-#plot y=x reference line
-roc.plot([0,1],[0,1], color='black', alpha = .5, linestyle = "dashed")
-roc.set_xlabel("False Positive Rate")
-roc.set_ylabel("True Positive Rate")
-roc.set_title("Sample ROCs")
-roc.legend()
-roc.plot()
+#Save the distance to the nearest and furthest point for each value. The near 
+#and far distances are used to create "pseudo-outliers" in the dfn method (Xiau 2013)
+allFurthest = []
+allNearest = []
+optimized = []
+for i in range(0,150):
+    #Get the max and min of each column to sum in the DFN equation Xiau 2013: 
+    far = -(math.inf)
+    near = math.inf
+
+    for j in range(0, 150):
+        d = pow(distance.euclidean(allPts[i], allPts[j]),2)
+        #d = distance.euclidean(allPts[i], allPts[j])
+        if d == 0: distanceMatrix[i][j] = None
+        else: 
+            distanceMatrix[i][j] = d
+            if d > far: far = d
+            if d < near: near = d
+        
+    allNearest.append(near)    
+    allFurthest.append(far)
+
+###############################################################################
+##GET OPTIMIZED S USING DFN##
+###############################################################################    
+
+points = (allNearest, allFurthest) 
+convergence = minimize(dfn,
+        x0=10,
+        args = points,
+        method = 'Nelder-Mead'
+        )
+
+gamma = (1/(convergence.x[0]))
 
 
-#loo
-fig, auc = plt.subplots() 
-auc_averages = []
-gArray = []
-for sigma in sArray:
-    gamma = 1/(2*math.pow(sigma, 2))
-    gArray.append(gamma)
-    counter = splits
-    total = 0
-    while counter > 0:
-        trainResults, testResults = Model(gamma)
-        aucScore = sk.metrics.roc_auc_score(testResults['True Value'], testResults['Decision Function'])
-        total += aucScore
-        auc.scatter(sigma, aucScore, alpha = .2, color='blue')
-        counter -= 1
-    auc_averages.append(total/splits)
-    
-    
+###############################################################################
+##Plot optimized value over distance histogram##
+###############################################################################
+fig, plots = plt.subplots(1,2,figsize=(15, 5))
 
-print(sArray)
-print(auc_averages)
+        
+plots[0].axvline(x = (convergence.x[0]), c= 'red')
+plots[0].hist(distanceMatrix.flatten(), bins = 300, density = True)
+   
+###########################################################################
+#Plot ROC ##
+###########################################################################
+#Plot ROC for optimized s value
+oc = sk.svm.OneClassSVM(gamma = gamma, nu = alpha)
+#Fit model and get dataframe results
+oc.fit(scaledTrain)
+trainResults = ocIris.getResults(oc, scaledTrain, trainData[target].to_numpy())
+testResults = ocIris.getResults(oc, scaledTest, testData[target].to_numpy())
 
-auc.set_xlabel("sigma")
-auc.set_ylabel("auc")
-auc.plot()
-print("gamma vals: ")
-print(gArray)
 
+fpr, tpr, threshold = sk.metrics.roc_curve(testResults['True Value'], testResults['Decision Function'])
+#label = str(sigma) + " sigma"
+plots[1].plot(fpr,tpr,label = "AUC: " + str(sk.metrics.roc_auc_score(testResults['True Value'], testResults['Decision Function'])))
+plots[1].plot([0,1],[0,1], color='black', alpha = .5, linestyle = "dashed")
+plots[1].legend()
+plots[1].plot
+print("AUC: " + str(sk.metrics.roc_auc_score(testResults['True Value'], testResults['Decision Function'])))    

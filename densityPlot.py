@@ -1,48 +1,51 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Apr  7 16:10:02 2020
+This script creates a density plot of the decision function values returned by 
+the ocsvm model.  It runs 'split' times in order to get an avarage from many 
+different possible train/test splits
 
+Created on Tue Apr  7 16:10:02 2020
 @author: Justin
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-import sklearn as sk
-import sklearn.model_selection
-import math
 import pandas as pd
 import JB_functions_ocIris as ocIris
 import seaborn 
 
-#USER DEFINED GLOBAL VARIABLES
+splits = 100
+s = 8.5
+gamma = (1/s)
 
-#How many times to fit the model with different splits
-splits = 30
+#Fit model many 'split' number of times to get a good average using many possible
+#random 
+values = pd.DataFrame()
+while splits > 0:   
+    trainResults,testResults =  ocIris.Model(gamma)
+    values = pd.concat([values, testResults, trainResults])
+    splits -= 1
 
-#Alpha is expected percentage of anomolies in the dataset as a decimal
-alpha = .03
+  
+###############################################################################
+##PLOT##
+###############################################################################    
 
-#simga
-sigma = 1
-#nTrain is percent of nominal points used in the training data as a decimal
-nTrain = .5
+##Prepare decision function hist data
+#Group the decision function values into nominal and anomalous
+groups = values.groupby("True Value")
+nominal = groups.get_group(1)
+anomalous = groups.get_group(-1)
 
-#Gamma is the kernal width
-gVal = 1/(2*math.pow(sigma, 2))
-#Nu is the upper bound of rejected target data
-nVal = alpha
+plt.axvline(0, c = 'black', linestyle = 'dashed')
+plt.ylabel('Density')
+plt.xlabel('Decision Function Value')
+seaborn.distplot(nominal["Decision Function"], hist = False, label = 'nominal')
+seaborn.distplot(anomalous["Decision Function"], hist = False, label = 'anomalous', color = 'r')
+plt.legend()
 
-#Import location
-irisData = pd.read_csv(r"C:\Users\Justin\OneDrive\Desktop\OSU\419\databases\iris.csv")
-#Dataframe labels
-sepalCols = ["Sepal length", "Sepal width"]
-petalCols = ["Petal length", "Petal width"]
-dataCols = ["Sepal length", "Sepal width", "Petal length", "Petal width"]
-labelCols = ["Species"]
 
-selectedCols = dataCols
-
-#Plot decision factor histogram
+###############################################################################
+#Alternative style (histogram)
 def PlotDecF(nominal, anomalous):
     #Create plot data
     hData = [nominal["Decision Function"],  anomalous["Decision Function"]]
@@ -52,47 +55,5 @@ def PlotDecF(nominal, anomalous):
     plt.hist(hData, bins = 20, color = colors, label = labels)
     plt.legend()
     plt.xlabel('Decision Function Value')
-
-###############################################################################
-#Workflow#
-###############################################################################
-
-#Fit model many times for distribution of possible splits
-allResults = pd.DataFrame()
-while splits > 0:
     
-    ##DATA PREP##
-    #Prepare data and split into training and testing groups
-    trainData, testData = ocIris.splitData(irisData, alpha, nTrain)
-    #Normalize data
-    scaledTrain, scaledTest = ocIris.normalizeData(trainData, testData, selectedCols)
-
-   ############################################################################
-
-    ##CREATE MODEL##
-    oc = sk.svm.OneClassSVM(gamma = gVal, nu = nVal)
-    #Fit model and get dataframe results
-    oc.fit(scaledTrain)
-    trainResults = ocIris.getResults(oc, scaledTrain, trainData[labelCols].to_numpy())
-    testResults = ocIris.getResults(oc, scaledTest, testData[labelCols].to_numpy())
-    
-    ##RESET LOOP##
-    allResults = pd.concat([allResults, testResults, trainResults])
-    splits -= 1
-
-    ############################################################################
-   
-   
-
-##BUILD HISTOGRAM
-
-##Prepare decision function hist data
-#Group the decision function values into nominal and anomalous
-groups = allResults.groupby("True Value")
-nominal = groups.get_group(1)
-anomalous = groups.get_group(-1)
-
 #PlotDecF(nominal, anomalous)
-seaborn.distplot(nominal["Decision Function"], hist = False)
-seaborn.distplot(anomalous["Decision Function"], hist = False)
-
